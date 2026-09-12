@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to SpeisePlan",
+        "description": "Enter the address of your SpeisePlan server and its API token. Both the token and the instance ID are shown on SpeisePlan's Settings page (/settings).",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "API token",
+          "ssl": "Uses HTTPS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to SpeisePlan",
+        "description": "SpeisePlan rejected the stored API token. Copy the current one from its Settings page.",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "reconfigure": {
+        "title": "Change SpeisePlan connection",
+        "description": "Update where SpeisePlan is reachable. It must be the same instance, otherwise add it as a new entry.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "token": "API token",
+          "ssl": "Uses HTTPS"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid API token",
+      "unsupported_version": "This SpeisePlan is too old — it has no API. Update it to a version that serves /api/v1."
+    },
+    "abort": {
+      "already_configured": "This SpeisePlan is already configured",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "The connection was updated",
+      "wrong_instance": "Those details belong to a different SpeisePlan instance"
+    }
+  }
+}

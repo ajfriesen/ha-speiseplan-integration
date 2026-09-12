@@ -1,0 +1,28 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # Mark SemVer prereleases (v0.2.0-rc.1) as such so HACS skips them.
+      - name: Flag prereleases
+        if: ${{ steps.release.outputs.release_created == 'true' && contains(steps.release.outputs.tag_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh release edit "$TAG" --prerelease --latest=false

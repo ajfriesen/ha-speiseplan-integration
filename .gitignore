@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.direnv/
+result
+result-*

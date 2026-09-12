@@ -1,0 +1,14 @@
+{
+  "domain": "speiseplan",
+  "name": "SpeisePlan",
+  "codeowners": [
+    "@ajfriesen"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/ajfriesen/ha-speiseplan-integration",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ajfriesen/ha-speiseplan-integration/issues",
+  "requirements": [],
+  "version": "0.0.0"
+}
