@@ -14,3 +14,10 @@ jobs:
       - uses: "hacs/action@main"
         with:
           category: "integration"
+          # This is distributed as a HACS *custom repository*, not through the
+          # default store. brands (an entry in home-assistant/brands) and
+          # license (an OSI-approved one) are only gates for inclusion in that
+          # store; everything still installs from a custom repository without
+          # them. The checks that catch real breakage — hacs.json and the
+          # integration manifest — stay on.
+          ignore: "brands license"

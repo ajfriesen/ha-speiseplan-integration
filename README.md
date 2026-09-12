@@ -116,10 +116,14 @@ endpoint, so your renderer never has to care which kind a recipe has.
 
 ## Installation
 
-### HACS
+### HACS (custom repository)
 
-Add this repository as a custom repository (category: Integration), install SpeisePlan,
-and restart Home Assistant.
+This is distributed as a HACS **custom repository**, not through the default store.
+
+In HACS: **⋮ → Custom repositories**, paste
+`https://github.com/ajfriesen/ha-speiseplan-integration`, pick category **Integration**,
+add it, then install SpeisePlan and restart Home Assistant. Updates come through HACS as
+normal from then on.
 
 ### Manual
 
