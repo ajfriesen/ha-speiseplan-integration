@@ -48,6 +48,9 @@ def meal_summary(meal: dict[str, Any], base_url: str) -> dict[str, Any]:
         "name": meal.get("name"),
         "url": meal.get("url") or None,
         "photo_url": path or None,
+        # False means photo_url still returns an image — a QR code linking to
+        # the recipe, so somebody can scan it and add the missing photo.
+        "has_photo": bool(meal.get("has_photo")),
         "minutes": meal.get("minutes"),
         "tag": meal.get("tag") or None,
         "recipe_id": meal.get("recipe_id"),
@@ -128,6 +131,7 @@ class SpeisePlanDaySensor(SpeisePlanEntity, SensorEntity):
             "name": first.get("name"),
             "url": first.get("url"),
             "photo_url": first.get("photo_url"),
+            "has_photo": first.get("has_photo", False),
             "minutes": first.get("minutes"),
             "tag": first.get("tag"),
             "recipe_id": first.get("recipe_id"),

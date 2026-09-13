@@ -1,4 +1,4 @@
-| Host | Where SpeisePlan runs. For the add-on this is its internal hostname (e.g. `49e94de4-speiseplan`), printed in the add-on log — not your Home Assistant host. |# SpeisePlan for Home Assistant
+# SpeisePlan for Home Assistant
 
 Brings your [SpeisePlan](https://github.com/ajfriesen/SpeisePlan) meal plan into Home
 Assistant, so you can put it on a dashboard or render it onto an e-paper display.
@@ -35,6 +35,7 @@ meals:                       # every meal planned that day, in order
   - name: Lasagne
     url: https://example.com/lasagne
     photo_url: http://49e94de4-speiseplan:8080/api/v1/recipes/7/photo
+    has_photo: true
     minutes: 45
     tag: pasta
     recipe_id: 7
@@ -42,6 +43,7 @@ meals:                       # every meal planned that day, in order
 name: Lasagne                # convenience copies of meals[0]
 url: https://example.com/lasagne
 photo_url: http://49e94de4-speiseplan:8080/api/v1/recipes/7/photo
+has_photo: true
 minutes: 45
 tag: pasta
 recipe_id: 7
@@ -87,9 +89,16 @@ data:
       ysize: 200
 ```
 
-**Guard the empty case.** With nothing planned, or a meal that has no photo, `photo_url`
-is `none` and the template renders the string `"None"`, which fails the download. Put a
-condition on the automation:
+**A meal without a photo still draws something.** `photo_url` answers with a QR code
+linking to that recipe, so the display prompts you to fix it: scan, and SpeisePlan opens
+on your phone at that recipe with the photo controls ready. It needs SpeisePlan's
+`public_url` option set to an address your phone can reach — without it there is no
+photo to serve and `photo_url` 404s. `has_photo` tells the two apart if you want to draw
+something else instead.
+
+**Guard the empty day.** With nothing planned at all, `photo_url` is `none` and the
+template renders the string `"None"`, which fails the download. Put a condition on the
+automation:
 
 ```yaml
 condition:
