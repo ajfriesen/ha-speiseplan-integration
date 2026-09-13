@@ -1,4 +1,4 @@
-# SpeisePlan for Home Assistant
+| Host | Where SpeisePlan runs. For the add-on this is its internal hostname (e.g. `49e94de4-speiseplan`), printed in the add-on log — not your Home Assistant host. |# SpeisePlan for Home Assistant
 
 Brings your [SpeisePlan](https://github.com/ajfriesen/SpeisePlan) meal plan into Home
 Assistant, so you can put it on a dashboard or render it onto an e-paper display.
@@ -16,8 +16,10 @@ One device, with the following entities.
 | `sensor.speiseplan_day_1` … `day_6` | Same, for the next six days | `day_1` is tomorrow |
 | `sensor.speiseplan_meal_plan` | Number of meals planned in the window | Carries the whole plan in attributes |
 | `sensor.speiseplan_unassigned` | Number of meals staged without a day | |
-| `image.speiseplan_today`, `image.speiseplan_day_1` | The meal's photo | |
-| `image.speiseplan_day_2` … `day_6` | Same | Disabled by default — see below |
+
+There are no image entities: the photo is a URL on the day sensor, which whatever draws
+your display fetches itself. See [Getting the photo onto a
+display](#getting-the-photo-onto-a-display).
 
 ### Day sensor attributes
 
@@ -32,18 +34,17 @@ has_meal: true
 meals:                       # every meal planned that day, in order
   - name: Lasagne
     url: https://example.com/lasagne
-    photo_url: /api/v1/recipes/7/photo
+    photo_url: http://49e94de4-speiseplan:8080/api/v1/recipes/7/photo
     minutes: 45
     tag: pasta
     recipe_id: 7
     day: "2026-09-14"
 name: Lasagne                # convenience copies of meals[0]
 url: https://example.com/lasagne
-photo_url: /api/v1/recipes/7/photo
+photo_url: http://49e94de4-speiseplan:8080/api/v1/recipes/7/photo
 minutes: 45
 tag: pasta
 recipe_id: 7
-image_entity_id: image.speiseplan_day_2
 ```
 
 A day can hold **more than one meal** — SpeisePlan has no breakfast/lunch/dinner slots.
@@ -56,55 +57,55 @@ whole week.
 None of these attributes are written to the recorder — they would blow past its 16 KiB
 per-row limit and be silently dropped, and there is nothing in them worth graphing.
 
-### Why most image entities are disabled
-
-Home Assistant rewrites every image entity's state every five minutes to rotate its
-access token, whether or not the picture changed. Seven always-on image entities would
-add roughly 2000 state changes a day. Today and tomorrow are enabled; enable the rest in
-the entity settings if you need them.
-
 ## Getting the photo onto a display
 
-`entity_picture` looks like a URL you can hand to a display, but **its `?token=` expires
-after about ten minutes**. Never bake one into a device config. Pick whichever of these
-fits your setup:
+`photo_url` is an absolute URL pointing straight at SpeisePlan, so a renderer can fetch
+it directly — no Home Assistant image proxy, no expiring token, nothing cached in
+between.
 
-**1. Rendering inside Home Assistant** (OpenEPaperLink `drawcustom`, `dlimg`, …) — use a
-template, which is re-evaluated with a fresh token each render:
+With [OpenDisplay](https://opendisplay.org), template it into a `dlimg` element. The
+renderer runs inside Home Assistant, which is what makes this work: it can reach the
+add-on's internal hostname even though nothing on your LAN can.
 
 ```yaml
-- type: dlimg
-  url: "{{ state_attr('image.speiseplan_today', 'entity_picture') }}"
-  x: 0
-  y: 0
-  xsize: 296
-  ysize: 128
-- type: text
-  value: "{{ states('sensor.speiseplan_today') }}"
-  x: 0
-  y: 132
-  size: 20
+action: opendisplay.drawcustom
+target:
+  device_id: <your display>
+data:
+  payload:
+    - type: text
+      value: "{{ state_attr('sensor.speiseplan_today', 'name') }}"
+      x: 10
+      y: 10
+      size: 40
+      color: red
+    - type: dlimg
+      url: "{{ state_attr('sensor.speiseplan_today', 'photo_url') }}"
+      x: 200
+      y: 50
+      xsize: 200
+      ysize: 200
 ```
 
-**2. An external renderer** — fetch the image proxy with a long-lived access token. This
-URL is stable forever:
+**Guard the empty case.** With nothing planned, or a meal that has no photo, `photo_url`
+is `none` and the template renders the string `"None"`, which fails the download. Put a
+condition on the automation:
+
+```yaml
+condition:
+  - condition: template
+    value_template: "{{ state_attr('sensor.speiseplan_today', 'photo_url') != none }}"
+```
+
+Anything else that can reach SpeisePlan works the same way — the URL needs no
+credentials:
 
 ```bash
-curl -H "Authorization: Bearer <HA long-lived access token>" \
-     http://homeassistant.local:8123/api/image_proxy/image.speiseplan_today \
-     -o today.png
+curl -o today.png "$(...)/api/v1/recipes/7/photo"
 ```
 
-**3. A renderer that can reach SpeisePlan directly** — join the day sensor's `photo_url`
-onto your SpeisePlan address and send the SpeisePlan API token:
-
-```bash
-curl -H "Authorization: Bearer <SpeisePlan API token>" \
-     "http://speiseplan.local:8080/api/v1/recipes/7/photo"
-```
-
-SpeisePlan serves both locally stored and externally hosted photos from that one
-endpoint, so your renderer never has to care which kind a recipe has.
+SpeisePlan serves locally stored and externally hosted photos from that one endpoint, so
+your renderer never has to care which kind a recipe has.
 
 ### Whole-week template
 
@@ -136,14 +137,12 @@ Open **Settings → Devices & services → Add integration → SpeisePlan** and 
 
 | Field | Value |
 | --- | --- |
-| Host | Where SpeisePlan runs. For the add-on this is the add-on hostname shown on its Info page, or your Home Assistant host's address. |
+| Host | Where SpeisePlan runs. As an add-on that is its internal hostname, like `49e94de4-speiseplan` — printed in the add-on log, and not the same as your Home Assistant host. |
 | Port | `8080` by default |
-| API token | From SpeisePlan's **Settings** page (`http://<speiseplan>/settings`) |
 | Uses HTTPS | Only if you put SpeisePlan behind a TLS reverse proxy |
 
-SpeisePlan generates an API token on first start; you can also pin your own with the
-`SPEISEPLAN_API_TOKEN` environment variable or the add-on's `api_token` option. Either
-way the current value is shown on the Settings page.
+SpeisePlan requires no credentials: its JSON API answers any request, which is why the
+form asks only where it lives.
 
 Requires a SpeisePlan new enough to serve `/api/v1` — older versions have no API and the
 config flow will say so.

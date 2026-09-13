@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 
 from .coordinator import SpeisePlanConfigEntry
 
-TO_REDACT = {CONF_TOKEN, CONF_HOST, "instance_id"}
+TO_REDACT = {CONF_HOST, "instance_id"}
 
 
 async def async_get_config_entry_diagnostics(

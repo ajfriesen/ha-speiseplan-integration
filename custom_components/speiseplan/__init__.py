@@ -4,20 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SSL, CONF_TOKEN, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SSL, Platform
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 
-from .api import SpeisePlanAuthError, SpeisePlanClient, SpeisePlanError
+from .api import SpeisePlanClient, SpeisePlanError
 from .const import LOGGER
 from .coordinator import SpeisePlanConfigEntry, SpeisePlanCoordinator
 
-PLATFORMS: list[Platform] = [
-    Platform.IMAGE,
-    Platform.SENSOR,
-]
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SpeisePlanConfigEntry) -> bool:
@@ -27,14 +25,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: SpeisePlanConfigEntry) -
         session,
         entry.data[CONF_HOST],
         entry.data[CONF_PORT],
-        entry.data[CONF_TOKEN],
         entry.data.get(CONF_SSL, False),
     )
 
     try:
         info = await client.async_get_info()
-    except SpeisePlanAuthError as err:
-        raise ConfigEntryAuthFailed(str(err)) from err
     except SpeisePlanError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
@@ -54,6 +49,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SpeisePlanConfigEntry) -
 
     entry.runtime_data = coordinator
 
+    _async_remove_image_entities(hass, entry)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Roll the window over shortly after midnight. The five-minute poll would
@@ -66,6 +63,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: SpeisePlanConfigEntry) -
     )
 
     return True
+
+
+@callback
+def _async_remove_image_entities(
+    hass: HomeAssistant, entry: SpeisePlanConfigEntry
+) -> None:
+    """Drop the image entities earlier versions created.
+
+    Photos are now handed out as a URL on the sensors, so nothing recreates
+    these. Home Assistant keeps registry entries whose platform no longer sets
+    them up, and they would sit there permanently unavailable.
+    """
+    registry = er.async_get(hass)
+    for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if reg_entry.domain == Platform.IMAGE:
+            LOGGER.debug("Removing obsolete image entity %s", reg_entry.entity_id)
+            registry.async_remove(reg_entry.entity_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: SpeisePlanConfigEntry) -> bool:

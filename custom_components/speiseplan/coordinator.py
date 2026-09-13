@@ -6,10 +6,9 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SpeisePlanAuthError, SpeisePlanClient, SpeisePlanError
+from .api import SpeisePlanClient, SpeisePlanError
 from .const import DOMAIN, LOGGER, PLAN_DAYS, SCAN_INTERVAL
 
 type SpeisePlanConfigEntry = ConfigEntry[SpeisePlanCoordinator]
@@ -45,8 +44,6 @@ class SpeisePlanCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         try:
             return await self.client.async_get_plan(PLAN_DAYS)
-        except SpeisePlanAuthError as err:
-            raise ConfigEntryAuthFailed(str(err)) from err
         except SpeisePlanError as err:
             raise UpdateFailed(str(err)) from err
 

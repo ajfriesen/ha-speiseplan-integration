@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.image import DOMAIN as IMAGE_DOMAIN
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import MATCH_ALL
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from .const import DOMAIN, PLAN_DAYS
+from .const import PLAN_DAYS
 from .coordinator import SpeisePlanConfigEntry, SpeisePlanCoordinator
 from .entity import SpeisePlanEntity
 
@@ -34,13 +32,22 @@ DAY_KEYS: tuple[tuple[str, str], ...] = (
 )
 
 
-def meal_summary(meal: dict[str, Any]) -> dict[str, Any]:
-    """Flatten one meal into the shape templates read."""
+def meal_summary(meal: dict[str, Any], base_url: str) -> dict[str, Any]:
+    """Flatten one meal into the shape templates read.
+
+    photo_url is absolute so it can be templated straight into a renderer that
+    fetches it — an OpenDisplay drawcustom `dlimg` element, say. SpeisePlan
+    reports the path relative to its own root; joining it here is the only
+    place that knows the address. The endpoint serves locally stored and
+    externally hosted photos alike, so a consumer never has to tell them apart.
+    """
+    path = meal.get("photo_url")
+    if path and not path.startswith(("http://", "https://")):
+        path = f"{base_url}{path}"
     return {
         "name": meal.get("name"),
         "url": meal.get("url") or None,
-        "photo_url": meal.get("photo_url") or None,
-        "image": meal.get("image") or None,
+        "photo_url": path or None,
         "minutes": meal.get("minutes"),
         "tag": meal.get("tag") or None,
         "recipe_id": meal.get("recipe_id"),
@@ -88,18 +95,6 @@ class SpeisePlanDaySensor(SpeisePlanEntity, SensorEntity):
         super().__init__(coordinator, key)
         self._offset = offset
         self._attr_name = name
-        self._image_unique_id = f"{coordinator.instance_id}_{key}"
-
-    @property
-    def _image_entity_id(self) -> str | None:
-        """The image entity holding this day's photo.
-
-        Looked up in the registry rather than guessed from the key: entity ids
-        come from the entity's name, and the user is free to rename them.
-        """
-        return er.async_get(self.hass).async_get_entity_id(
-            IMAGE_DOMAIN, DOMAIN, self._image_unique_id
-        )
 
     @property
     def _day(self) -> dict[str, Any]:
@@ -120,7 +115,8 @@ class SpeisePlanDaySensor(SpeisePlanEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         day = self._day
         meals = self._meals
-        first = meal_summary(meals[0]) if meals else {}
+        base_url = self.coordinator.client.base_url
+        first = meal_summary(meals[0], base_url) if meals else {}
         # Every key is always present, so templates never need a guard.
         return {
             "date": day.get("date"),
@@ -128,14 +124,13 @@ class SpeisePlanDaySensor(SpeisePlanEntity, SensorEntity):
             "offset": self._offset,
             "meal_count": len(meals),
             "has_meal": bool(meals),
-            "meals": [meal_summary(m) for m in meals],
+            "meals": [meal_summary(m, base_url) for m in meals],
             "name": first.get("name"),
             "url": first.get("url"),
             "photo_url": first.get("photo_url"),
             "minutes": first.get("minutes"),
             "tag": first.get("tag"),
             "recipe_id": first.get("recipe_id"),
-            "image_entity_id": self._image_entity_id,
         }
 
 
@@ -158,7 +153,8 @@ class SpeisePlanSummarySensor(SpeisePlanEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
-        meals = [meal_summary(m) for m in self.coordinator.assigned]
+        base_url = self.coordinator.client.base_url
+        meals = [meal_summary(m, base_url) for m in self.coordinator.assigned]
         return {
             "today": data.get("today"),
             "timezone": data.get("timezone"),
@@ -170,7 +166,9 @@ class SpeisePlanSummarySensor(SpeisePlanEntity, SensorEntity):
                     "offset": day.get("offset"),
                     "date": day.get("date"),
                     "weekday": day.get("weekday"),
-                    "meals": [meal_summary(m) for m in day.get("meals") or []],
+                    "meals": [
+                        meal_summary(m, base_url) for m in day.get("meals") or []
+                    ],
                 }
                 for day in data.get("days") or []
             ],
@@ -195,4 +193,7 @@ class SpeisePlanUnassignedSensor(SpeisePlanEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"meals": [meal_summary(m) for m in self.coordinator.unassigned]}
+        base_url = self.coordinator.client.base_url
+        return {
+            "meals": [meal_summary(m, base_url) for m in self.coordinator.unassigned]
+        }
