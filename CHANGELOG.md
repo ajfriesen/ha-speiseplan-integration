@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ajfriesen/ha-speiseplan-integration/compare/v0.1.0...v0.2.0) (2026-09-14)
+
+
+### Features
+
+* expose has_photo, and document the QR code stand-in ([dad1213](https://github.com/ajfriesen/ha-speiseplan-integration/commit/dad1213d622868c13a7b71dc27fbd3a4577f3ad1))
+
 ## 0.1.0 (2026-09-12)
 
 
