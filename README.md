@@ -164,9 +164,14 @@ follow SpeisePlan's calendar, not Home Assistant's.
 
 ### If the entities ever come back as a new device
 
-The integration identifies your SpeisePlan by an instance ID stored in its database. If
-you restore SpeisePlan from a backup with a different database, that ID changes and Home
-Assistant treats it as a new device. The ID is shown on SpeisePlan's Settings page.
+The integration identifies your SpeisePlan by an instance ID stored in its database, shown
+on SpeisePlan's Settings page. Restoring a backup through **Settings → Restore** brings that
+ID along, so moving to a new machine or add-on install keeps the same device and entities.
+
+Point SpeisePlan at a database that was never this instance's, though — a hand-copied
+`speiseplan.db`, or a fresh install — and the ID differs, so Home Assistant registers a new
+device and the old entities go stale. Removing the old device and adding the integration
+again is the fix.
 
 ## Development
 
